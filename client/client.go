@@ -1,18 +1,29 @@
 package main
 
 import (
+	"../common_libs/address_helper"
 	"fmt"
 	"net"
 	"os"
 )
 
-var server_address string = "[fe80::]:1235"
+var port = "1235"
+var networkDeviceName = "en0"
 
 func main() {
-	broadcast_addr, err := net.ResolveUDPAddr("udp6", server_address)
+	networkDevice, err := net.InterfaceByName(networkDeviceName)
+	Error(err)
+	addrs, err := networkDevice.Addrs()
 	Error(err)
 
-	sender, err := net.DialUDP("udp", nil, broadcast_addr)
+	broadcastIP, err := addressHelper.GetIPv4BroadcastAddressFromAddressList(addrs)
+	Error(err)
+	fmt.Println(broadcastIP)
+
+	broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String() + ":" + port)
+	Error(err)
+
+	sender, err := net.DialUDP("udp", nil, broadcastAddr)
 	Error(err)
 	defer sender.Close()
 
@@ -21,6 +32,7 @@ func main() {
 	fmt.Println(message)
 }
 
+// Error は_errをnilかどうかチェックしてnil以外だった場合panicで止める関数
 func Error(_err error) {
 	if _err != nil {
 		panic(_err)
