@@ -1,7 +1,9 @@
 package main
 
 import (
+	"../common/annouce_type"
 	"../common_libs/address_helper"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -84,9 +86,10 @@ func main() {
 			continue
 		}
 
-		message, err := os.Hostname()
-		sender.Write([]byte(message))
-		fmt.Println(message)
+		bytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(bytes, annouceType.ServerAddress)
+		sender.Write(bytes)
+		fmt.Println(bytes)
 	}
 	if sender != nil {
 		sender.Close()
