@@ -23,7 +23,8 @@ func WaitSignal(endFlag *bool) {
 const intervalTime = 10
 const udpTimeout = 3
 const bufferByte = 64
-var port = "8120"
+var serverPort = "8120"
+var clientPort = "8121"
 var networkDeviceName = "ローカル エリア接続* 4"
 
 func main() {
@@ -63,7 +64,7 @@ func main() {
 		if watchingBroadcastIP.String() != broadcastIP.String() {
 			watchingBroadcastIP = broadcastIP
 
-			broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String()+":"+port)
+			broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String()+":"+serverPort)
 			if err != nil {
 				watchingBroadcastIP = nil
 				fmt.Printf("Failed to resolv bulletin board server address. %s\n", err)
@@ -92,7 +93,7 @@ func main() {
 
 		// listenerは存在しなければここで作成
 		if listener == nil {
-			selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+port)
+			selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+clientPort)
 			if err != nil {
 				fmt.Printf("Failed to resolv self IP address. %s\n", err)
 				continue
@@ -126,6 +127,7 @@ func main() {
 
 		if length != 16 {
 			fmt.Println("Receive packet but not correct length for answer.")
+			continue
 		}
 		var serverIP net.IP = net.IPv4(
 			buffer[length-4],

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"../common_libs/address_helper"
 	"../common/announce_type"
+	"../common_libs/address_helper"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -22,7 +22,10 @@ func WaitSignal(endFlag *bool) {
 const intervalTime = 10
 const udpTimeout = 3
 const bufferByte = 64
-const port = "8120"
+
+var serverPort = "8120"
+var clientPort = "8121"
+
 const networkDeviceName = "en0"
 
 func main() {
@@ -64,7 +67,7 @@ func main() {
 		if waitingBroadcastIP.String() != broadcastIP.String() {
 			waitingBroadcastIP = broadcastIP
 
-			broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String() + ":" + port)
+			broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String()+":"+serverPort)
 			if err != nil {
 				waitingBroadcastIP = nil
 				interfaceError = true
@@ -109,8 +112,8 @@ func main() {
 				{
 
 					clientTargetAddr, err := net.ResolveUDPAddr(
-							"udp",
-							inboundFromUDPAddr.(*net.UDPAddr).IP.String()+":"+port)
+						"udp",
+						inboundFromUDPAddr.(*net.UDPAddr).IP.String()+":"+clientPort)
 					fmt.Println(clientTargetAddr)
 					sender, err := net.DialUDP("udp", nil, clientTargetAddr)
 					if err != nil {
