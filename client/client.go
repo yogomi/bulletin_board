@@ -16,24 +16,24 @@ func WaitSignal(endFlag *bool) {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
+	fmt.Println("Execute ending process.")
 	*endFlag = true
 }
 
-var intervalTime time.Duration = 10
+const intervalTime = 10
+const udpTimeout = 3
+const bufferByte = 64
 var port = "1235"
 var networkDeviceName = "ローカル エリア接続* 4"
 
 func main() {
-	interfaces, _ := net.Interfaces()
-	fmt.Println(interfaces)
-
 	var firstInterval = true
 	var watchingBroadcastIP net.IP
 	var sender *net.UDPConn
+	var listener *net.UDPConn
 	var endFlag = false
 
 	go WaitSignal(&endFlag)
-	fmt.Println(endFlag)
 
 	for endFlag == false {
 		if firstInterval {
@@ -54,7 +54,7 @@ func main() {
 			continue
 		}
 
-		broadcastIP, err := addressHelper.GetIPv4BroadcastAddressFromAddressList(addrs)
+		selfIP, _, broadcastIP, err := addressHelper.GetIPv4AddressSetFromAddressList(addrs)
 		if err != nil {
 			watchingBroadcastIP = nil
 			fmt.Printf("Failed to find address on device. %s\n", err)
@@ -69,10 +69,13 @@ func main() {
 				fmt.Printf("Failed to resolv bulletin board server address. %s\n", err)
 				continue
 			}
-			fmt.Println(broadcastAddr)
+			fmt.Printf("Bulltien board broadcast address is %s\n", broadcastAddr.String())
 
 			if sender != nil {
 				sender.Close()
+			}
+			if listener != nil {
+				listener.Close()
 			}
 			sender, err = net.DialUDP("udp", nil, broadcastAddr)
 			if err != nil {
@@ -87,12 +90,50 @@ func main() {
 			continue
 		}
 
-		bytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(bytes, announceType.ServerAddress)
-		sender.Write(bytes)
-		fmt.Println(bytes)
+		// listenerは存在しなければここで作成
+		if listener == nil {
+			selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+port)
+			if err != nil {
+				watchingBroadcastIP = nil
+				fmt.Printf("Failed to resolv self IP address. %s\n", err)
+				if sender != nil {
+					sender.Close()
+				}
+				continue
+			}
+			listener, err = net.ListenUDP("udp", selfAddr)
+			if err != nil {
+				watchingBroadcastIP = nil
+				fmt.Printf("Failed to open self listen port. %s\n", err)
+				if sender != nil {
+					sender.Close()
+				}
+				continue
+			}
+		}
+
+		order := make([]byte, 4)
+		binary.BigEndian.PutUint32(order, announceType.ServerAddress)
+		sender.Write(order)
+
+		buffer := make([]byte, bufferByte)
+		listener.SetReadDeadline(time.Now().Add(udpTimeout * time.Second))
+		length, err := listener.Read(buffer)
+
+		if length != 16 {
+			fmt.Println("Receive packet but not correct length for answer.")
+		}
+		var serverIP net.IP = net.IPv4(
+			buffer[length-4],
+			buffer[length-3],
+			buffer[length-2],
+			buffer[length-1])
+		fmt.Println(serverIP)
 	}
 	if sender != nil {
 		sender.Close()
+	}
+	if listener != nil {
+		listener.Close()
 	}
 }

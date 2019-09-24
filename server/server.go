@@ -19,7 +19,8 @@ func WaitSignal(endFlag *bool) {
 	*endFlag = true
 }
 
-const intervalTime = 3
+const intervalTime = 10
+const udpTimeout = 3
 const bufferByte = 64
 const port = "1235"
 const networkDeviceName = "en0"
@@ -34,8 +35,7 @@ func main() {
 
 	for endFlag == false {
 		if interfaceError {
-			// interfaceが見つからなかった場合は、通常のintervalの3倍待つ
-			time.Sleep(intervalTime * 3 * time.Second)
+			time.Sleep(intervalTime * time.Second)
 			interfaceError = false
 		}
 		networkDevice, err := net.InterfaceByName(networkDeviceName)
@@ -53,7 +53,7 @@ func main() {
 			continue
 		}
 
-		broadcastIP, err := addressHelper.GetIPv4BroadcastAddressFromAddressList(addrs)
+		selfIP, _, broadcastIP, err := addressHelper.GetIPv4AddressSetFromAddressList(addrs)
 		if err != nil {
 			waitingBroadcastIP = nil
 			interfaceError = true
@@ -86,8 +86,8 @@ func main() {
 		}
 
 		buffer := make([]byte, bufferByte)
-		listener.SetReadDeadline(time.Now().Add(intervalTime * time.Second))
-		length, inboundFromAddrByte, err := listener.ReadFrom(buffer)
+		listener.SetReadDeadline(time.Now().Add(udpTimeout * time.Second))
+		length, inboundFromUDPAddr, err := listener.ReadFrom(buffer)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				continue
@@ -105,10 +105,29 @@ func main() {
 			switch announceOrder {
 			case announceType.ServerAddress:
 				fmt.Println("Receive order Server Address")
+				{
+
+					clientTargetAddr, err := net.ResolveUDPAddr(
+							"udp",
+							inboundFromUDPAddr.(*net.UDPAddr).IP.String()+":"+port)
+					fmt.Println(clientTargetAddr)
+					sender, err := net.DialUDP("udp", nil, clientTargetAddr)
+					if err != nil {
+						fmt.Println("Failed to connect client")
+						break
+					}
+					defer sender.Close()
+					sendedLength, err := sender.Write(selfIP)
+					if err != nil {
+						fmt.Println("Failed to send Server Address to client")
+						break
+					}
+					fmt.Printf("%d length is sended.", sendedLength)
+				}
 			default:
 				fmt.Printf("Unknown announce order. %v\n", buffer[:length])
 			}
-			inboundFromAddr := inboundFromAddrByte.(*net.UDPAddr).String()
+			inboundFromAddr := inboundFromUDPAddr.String()
 			fmt.Printf("Inbound %v\n", inboundFromAddr)
 		}
 	}
