@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../common/annouce_type"
+	"../common/announce_type"
 	"../common_libs/address_helper"
 	"encoding/binary"
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// WaitSignal は外部からのシグナルを受け取る関数。
 func WaitSignal(endFlag *bool) {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
@@ -27,9 +28,9 @@ func main() {
 	fmt.Println(interfaces)
 
 	var firstInterval = true
-	var watchingBroadcastIP net.IP = nil
-	var sender net.Conn = nil
-	var endFlag bool = false
+	var watchingBroadcastIP net.IP
+	var sender *net.UDPConn
+	var endFlag = false
 
 	go WaitSignal(&endFlag)
 	fmt.Println(endFlag)
@@ -87,7 +88,7 @@ func main() {
 		}
 
 		bytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(bytes, annouceType.ServerAddress)
+		binary.BigEndian.PutUint32(bytes, announceType.ServerAddress)
 		sender.Write(bytes)
 		fmt.Println(bytes)
 	}
