@@ -23,7 +23,7 @@ func WaitSignal(endFlag *bool) {
 const intervalTime = 10
 const udpTimeout = 3
 const bufferByte = 64
-var port = "1235"
+var port = "8120"
 var networkDeviceName = "ローカル エリア接続* 4"
 
 func main() {
@@ -94,20 +94,12 @@ func main() {
 		if listener == nil {
 			selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+port)
 			if err != nil {
-				watchingBroadcastIP = nil
 				fmt.Printf("Failed to resolv self IP address. %s\n", err)
-				if sender != nil {
-					sender.Close()
-				}
 				continue
 			}
 			listener, err = net.ListenUDP("udp", selfAddr)
 			if err != nil {
-				watchingBroadcastIP = nil
 				fmt.Printf("Failed to open self listen port. %s\n", err)
-				if sender != nil {
-					sender.Close()
-				}
 				continue
 			}
 		}
@@ -119,6 +111,18 @@ func main() {
 		buffer := make([]byte, bufferByte)
 		listener.SetReadDeadline(time.Now().Add(udpTimeout * time.Second))
 		length, err := listener.Read(buffer)
+
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				fmt.Println("Receive answer timeout.")
+				continue
+			}
+			if listener != nil {
+				listener.Close()
+			}
+			fmt.Printf("Failed to read message. %s\n", err)
+			continue
+		}
 
 		if length != 16 {
 			fmt.Println("Receive packet but not correct length for answer.")

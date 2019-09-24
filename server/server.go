@@ -22,7 +22,7 @@ func WaitSignal(endFlag *bool) {
 const intervalTime = 10
 const udpTimeout = 3
 const bufferByte = 64
-const port = "1235"
+const port = "8120"
 const networkDeviceName = "en0"
 
 func main() {
@@ -98,6 +98,7 @@ func main() {
 			waitingBroadcastIP = nil
 			interfaceError = true
 			fmt.Printf("Failed to read message. %s\n", err)
+			continue
 		}
 
 		if length == 4 {
