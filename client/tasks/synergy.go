@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"errors"
+	"fmt"
 	"net"
 	"os/exec"
 	"runtime"
@@ -14,6 +14,8 @@ func ConnectSynergy(synergyServer net.IP) error {
 		options = append(options, "-f")
 	}
 	options = append(options, synergyServer.String())
-	result, _ := exec.Command("synergyc", options...).Output()
-	return errors.New("Synergyc result is \"" + string(result) + "\".")
+
+	fmt.Println("Connect to synergy serve %s", synergyServer)
+	err := exec.Command("synergyc", options...).Run()
+	return err
 }
