@@ -3,6 +3,7 @@ package main
 import (
 	"../common/announce_type"
 	"../common_libs/address_helper"
+	"./tasks"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -134,7 +135,8 @@ func main() {
 			buffer[length-3],
 			buffer[length-2],
 			buffer[length-1])
-		fmt.Println(serverIP)
+		err = tasks.ConnectSynergy(serverIP)
+		fmt.Println(err)
 	}
 	if sender != nil {
 		sender.Close()
