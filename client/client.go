@@ -30,7 +30,6 @@ var networkDeviceName = "ローカル エリア接続* 4"
 
 func main() {
 	var firstInterval = true
-	var watchingBroadcastIP net.IP
 	var sender *net.UDPConn
 	var listener *net.UDPConn
 	var endFlag = false
@@ -45,65 +44,49 @@ func main() {
 		}
 		networkDevice, err := net.InterfaceByName(networkDeviceName)
 		if err != nil {
-			watchingBroadcastIP = nil
 			fmt.Printf("Device %s is not found.\n", networkDeviceName)
 			continue
 		}
 		addrs, err := networkDevice.Addrs()
 		if err != nil {
-			watchingBroadcastIP = nil
 			fmt.Printf("Failed to find address on device. %s\n", err)
 			continue
 		}
 
 		selfIP, _, broadcastIP, err := addressHelper.GetIPv4AddressSetFromAddressList(addrs)
 		if err != nil {
-			watchingBroadcastIP = nil
 			fmt.Printf("Failed to find address on device. %s\n", err)
 			continue
 		}
-		if watchingBroadcastIP.String() != broadcastIP.String() {
-			watchingBroadcastIP = broadcastIP
-
-			broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String()+":"+serverPort)
-			if err != nil {
-				watchingBroadcastIP = nil
-				fmt.Printf("Failed to resolv bulletin board server address. %s\n", err)
-				continue
-			}
-			fmt.Printf("Bulltien board broadcast address is %s\n", broadcastAddr.String())
-
-			if sender != nil {
-				sender.Close()
-			}
-			if listener != nil {
-				listener.Close()
-			}
-			sender, err = net.DialUDP("udp", nil, broadcastAddr)
-			if err != nil {
-				watchingBroadcastIP = nil
-				fmt.Printf("Failed to connect bulletin board server. %s\n", err)
-				continue
-			}
+		broadcastAddr, err := net.ResolveUDPAddr("udp", broadcastIP.String()+":"+serverPort)
+		if err != nil {
+			fmt.Printf("Failed to resolv bulletin board server address. %s\n", err)
+			continue
 		}
-		if sender == nil {
-			watchingBroadcastIP = nil
-			fmt.Printf("Sender is nil\n")
+		fmt.Printf("Bulltien board broadcast address is %s\n", broadcastAddr.String())
+
+		if sender != nil {
+			sender.Close()
+		}
+		sender, err = net.DialUDP("udp", nil, broadcastAddr)
+		if err != nil {
+			fmt.Printf("Failed to connect bulletin board server. %s\n", err)
 			continue
 		}
 
-		// listenerは存在しなければここで作成
-		if listener == nil {
-			selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+clientPort)
-			if err != nil {
-				fmt.Printf("Failed to resolv self IP address. %s\n", err)
-				continue
-			}
-			listener, err = net.ListenUDP("udp", selfAddr)
-			if err != nil {
-				fmt.Printf("Failed to open self listen port. %s\n", err)
-				continue
-			}
+		selfAddr, err := net.ResolveUDPAddr("udp", selfIP.String()+":"+clientPort)
+		fmt.Printf("Create listen port %s\n", selfAddr)
+		if err != nil {
+			fmt.Printf("Failed to resolv self IP address. %s\n", err)
+			continue
+		}
+		if listener != nil {
+			listener.Close()
+		}
+		listener, err = net.ListenUDP("udp", selfAddr)
+		if err != nil {
+			fmt.Printf("Failed to open self listen port. %s\n", err)
+			continue
 		}
 
 		order := make([]byte, 4)
@@ -118,9 +101,6 @@ func main() {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				fmt.Println("Receive answer timeout.")
 				continue
-			}
-			if listener != nil {
-				listener.Close()
 			}
 			fmt.Printf("Failed to read message. %s\n", err)
 			continue
