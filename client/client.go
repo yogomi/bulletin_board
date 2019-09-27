@@ -21,30 +21,40 @@ func WaitSignal(endFlag *bool) {
 	*endFlag = true
 }
 
-const intervalTime = 10
+const intervalTime = 5
 const udpTimeout = 3
 const bufferByte = 64
 var serverPort = "8120"
 var clientPort = "8121"
-var networkDeviceName = "ローカル エリア接続* 4"
+const primaryNetworkDeviceIndex = 4
+const secondaryNetworkDeviceIndex = 12
 
 func main() {
 	var firstInterval = true
 	var sender *net.UDPConn
 	var listener *net.UDPConn
 	var endFlag = false
+	var primaryMode = true
 
 	go WaitSignal(&endFlag)
 
 	for endFlag == false {
+		networkDeviceIndex := func(primaryMode bool) int {
+			if primaryMode {
+				return primaryNetworkDeviceIndex
+			} else {
+				return secondaryNetworkDeviceIndex
+			}
+		} (primaryMode)
+		primaryMode = !primaryMode
 		if firstInterval {
 			firstInterval = false
 		} else {
 			time.Sleep(intervalTime * time.Second)
 		}
-		networkDevice, err := net.InterfaceByName(networkDeviceName)
+		networkDevice, err := net.InterfaceByIndex(networkDeviceIndex)
 		if err != nil {
-			fmt.Printf("Device %s is not found.\n", networkDeviceName)
+			fmt.Printf("Device index %d is not found.\n", networkDeviceIndex)
 			continue
 		}
 		addrs, err := networkDevice.Addrs()
